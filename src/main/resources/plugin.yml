@@ -1,0 +1,4 @@
+name: SwitchingItemFrame
+version: '0.1'
+main: cz.coffee.ItemFrameRotator
+api-version: '1.21'
