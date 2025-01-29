@@ -1,4 +1,9 @@
 name: SwitchingItemFrame
-version: '0.1'
+version: '0.5'
 main: cz.coffee.ItemFrameRotator
 api-version: '1.21'
+commands:
+  itemframerotator:
+    description: Disable or Enable rotation in item frames
+    usage: /ifr toggle
+    aliases: [ifr]

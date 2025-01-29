@@ -1,8 +1,9 @@
 package cz.coffee.listeners;
 
 import cz.coffee.CustomItemFrame;
-import cz.coffee.RPlayer;
-import cz.coffee.utils.ChatUitls;
+import cz.coffee.ItemFrameRotator;
+import cz.coffee.support.ChatUitls;
+import cz.coffee.support.ItemFrameMap;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -12,22 +13,18 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
-import org.bukkit.event.hanging.HangingPlaceEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
 
-import static cz.coffee.CustomItemFrame.ITEM_KEY;
 import static cz.coffee.CustomItemFrame.isCustomItemFrame;
 
 /**
@@ -37,8 +34,7 @@ public class FrameListener implements Listener {
 
     private static final int MAX_ITEMS = 10;
 
-    private final Map<ItemFrame, List<ItemStack>> frameItems = new HashMap<>();
-    private final Map<ItemFrame, Integer> frameIndices = new HashMap<>();
+    private final ItemFrameMap<ItemFrame, ItemStack, Container> frameMap = new ItemFrameMap<>();
 
     private static final NamespacedKey ITEM_KEY = CustomItemFrame.ITEM_KEY;
 
@@ -61,29 +57,31 @@ public class FrameListener implements Listener {
      */
     @EventHandler
     public void onPlaceItemFrame(PlayerInteractEvent event) {
-        if (event.getItem() != null && event.getItem().getType() == Material.ITEM_FRAME) {
+        if (!ItemFrameRotator.ROTATE_ITEMS) return;
+
+        if (event.getItem()!= null && event.getItem().getType() == Material.ITEM_FRAME) {
             var item = event.getItem();
             var meta = item.getItemMeta();
             if (isCustomItemFrame(meta.getPersistentDataContainer()) && event.getPlayer().isSneaking()) {
                 switch (event.getAction()) {
                     case RIGHT_CLICK_BLOCK, RIGHT_CLICK_AIR -> {
                         if (
-                            event.getItem() != null &&
-                            event.getItem().getType() == Material.ITEM_FRAME &&
-                            isCustomItemFrame(meta.getPersistentDataContainer())
+                                event.getItem()!= null &&
+                                        event.getItem().getType() == Material.ITEM_FRAME &&
+                                        isCustomItemFrame(meta.getPersistentDataContainer())
                         ) {
                             Entity placedEntity = event.getPlayer().getWorld().spawn(event.getClickedBlock().getRelative(event.getBlockFace()).getLocation(), ItemFrame.class);
-                            var rPlayer = new RPlayer(event.getPlayer());
+                            var player = event.getPlayer();
 
                             if (placedEntity instanceof ItemFrame itemFrame) {
                                 var attachedBlock = event.getClickedBlock();
                                 if (isAllowedStorage(attachedBlock)) {
-                                    rPlayer.info("&7Special &bRotated Item Frame&7 placed!");
+                                    ChatUitls.info("&7Special &bRotated Item Frame&7 placed!", player);
                                     itemFrame.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.STRING, "special_frame");
-                                    handleStorageInteraction(itemFrame, attachedBlock, rPlayer);
+                                    handleStorageInteraction(itemFrame, attachedBlock, player);
                                 } else {
                                     itemFrame.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.STRING, "special_frame");
-                                    rPlayer.info("&7Special &bRotated Item Frame&7 placed!");
+                                    ChatUitls.info("&7Special &bRotated Item Frame&7 placed!", player);
                                 }
                             }
                         }
@@ -100,15 +98,15 @@ public class FrameListener implements Listener {
      */
     @EventHandler
     public void onDamageItemFrame(EntityDamageByEntityEvent event) {
+        if (!ItemFrameRotator.ROTATE_ITEMS) return;
         if (event.getDamager() instanceof Player player) {
             if (event.getEntity() instanceof ItemFrame itemFrame && isCustomItemFrame(itemFrame.getPersistentDataContainer())) {
                 event.setCancelled(true);
-                var rPlayer = new RPlayer(player);
                 if (player.isSneaking()) {
-                    rPlayer.info("&7Removed diamond item frame.");
+                    ChatUitls.info("&7Removed diamond item frame.", player);
                     itemFrame.remove();
                 } else {
-                    rPlayer.info("&cYou can't remove item frames without sneaking.");
+                    ChatUitls.info("&cYou can't remove item frames without sneaking.", player);
                 }
             }
         }
@@ -120,18 +118,16 @@ public class FrameListener implements Listener {
      */
     @EventHandler
     public void onDamageItemFrame(HangingBreakByEntityEvent event) {
+        if (!ItemFrameRotator.ROTATE_ITEMS) return;
         if (event.getRemover() instanceof Player player) {
             if (event.getEntity() instanceof ItemFrame itemFrame && isCustomItemFrame(itemFrame.getPersistentDataContainer())) {
-                var rPlayer = new RPlayer(player);
                 event.setCancelled(true);
-                if (rPlayer.getBukkitPlayer().isSneaking()) {
-                    rPlayer.info("&7Removed diamond item frame.");
+                if (player.isSneaking()) {
+                    ChatUitls.info("&7Removed diamond item frame.", player);
                     itemFrame.remove();
                 } else {
-                    rPlayer.info("&cYou can't remove item frames without sneaking.");
+                    ChatUitls.info("&cYou can't remove item frames without sneaking.", player);
                 }
-
-
             }
         }
     }
@@ -143,17 +139,17 @@ public class FrameListener implements Listener {
      */
     @EventHandler
     public void onPlayerInteract(PlayerInteractEntityEvent event) {
+        if (!ItemFrameRotator.ROTATE_ITEMS) return;
         if (!(event.getRightClicked() instanceof ItemFrame itemFrame)) {
             return;
         }
 
-        RPlayer player = new RPlayer(event.getPlayer());
-        if (player.getBukkitPlayer().isSneaking()) {
+        Player player = event.getPlayer();
+        if (player.isSneaking()) {
             event.setCancelled(true);
-            initializeFrameIfAbsent(itemFrame);
 
-            ItemStack heldItem = player.getBukkitPlayer().getInventory().getItemInMainHand();
-            if (heldItem.getType() != Material.AIR) {
+            ItemStack heldItem = player.getInventory().getItemInMainHand();
+            if (heldItem.getType()!= Material.AIR) {
                 addItemToFrame(player, itemFrame, heldItem);
             }
         }
@@ -166,23 +162,53 @@ public class FrameListener implements Listener {
      */
     @EventHandler
     public void onEntityInteract(EntityInteractEvent event) {
+        if (!ItemFrameRotator.ROTATE_ITEMS) return;
         if (event.getEntity() instanceof ItemFrame itemFrame && isCustomItemFrame(itemFrame.getPersistentDataContainer())) {
             event.setCancelled(true);
         }
+    }
+
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        Container container = (Container) event.getInventory().getHolder();
+        var frame = frameMap.getFrameByContainer(container);
+        if (container!= null && frameMap.contains(frame)) { // Check if container is in the map
+            updateStorageItems(container);
+        }
+    }
+
+    private void updateStorageItems(Container container) {
+        Map<ItemStack, Double> storageItems = collectStorageItems(container);
+
+        List<ItemStack> items = storageItems.entrySet().stream().map(entry -> {
+            ItemStack item = entry.getKey().clone();
+            var meta = item.getItemMeta();
+            meta.setDisplayName(ChatUitls.translate(String.format("&f&o%s &bx%.0f", item.getType().toString().toLowerCase().replaceAll("_", " "), entry.getValue())));
+            item.setItemMeta(meta);
+            return item;
+        }).toList();
+
+
+        var frame = frameMap.getFrameByContainer(container);
+        frameMap.remove(frame);
+        ChatUitls.info("&7Updated items in the frame.", container.getBlock().getWorld().getPlayers().toArray(new Player[0]));
+        frameMap.addAll(frame, items);
+        frameMap.addContainer(frame, container);
     }
 
     /**
      * Rotates items in all registered item frames.
      */
     public synchronized void rotateItems() {
-        for (var world : Bukkit.getWorlds()) {
-            for (var frame : world.getEntitiesByClass(ItemFrame.class)) {
-                if (frameItems.containsKey(frame)) {
-                    List<ItemStack> items = frameItems.get(frame);
+        for (var world: Bukkit.getWorlds()) {
+            for (var frame: world.getEntitiesByClass(ItemFrame.class)) {
+                if (frameMap.contains(frame)) {
+                    List<ItemStack> items = frameMap.get(frame);
                     if (!items.isEmpty()) {
-                        int currentIndex = frameIndices.getOrDefault(frame, 0);
+                        int currentIndex = frameMap.getIndex(frame);
                         currentIndex = (currentIndex + 1) % items.size();
-                        frameIndices.put(frame, currentIndex);
+                        frameMap.setIndex(frame, currentIndex);
                         frame.setItem(items.get(currentIndex));
                     }
                 }
@@ -194,23 +220,7 @@ public class FrameListener implements Listener {
      * Clears all stored data for item frames.
      */
     public void clearData() {
-        frameItems.clear();
-        frameIndices.clear();
-    }
-
-    /**
-     * Initializes an item frame in the data maps if not already present.
-     *
-     * @param itemFrame The item frame to initialize.
-     */
-    private void initializeFrameIfAbsent(ItemFrame itemFrame) {
-        frameItems.putIfAbsent(itemFrame, new ArrayList<>());
-        frameIndices.putIfAbsent(itemFrame, 0);
-    }
-
-    public void initializeFrameIfAbsent(ItemFrame itemFrame, List<ItemStack> items) {
-        frameItems.putIfAbsent(itemFrame, items);
-        frameIndices.putIfAbsent(itemFrame, 0);
+        frameMap.clear();
     }
 
 
@@ -221,13 +231,17 @@ public class FrameListener implements Listener {
      * @param itemFrame The item frame to update.
      * @param item      The item to add.
      */
-    private void addItemToFrame(RPlayer player, ItemFrame itemFrame, ItemStack item) {
-        List<ItemStack> items = frameItems.get(itemFrame);
+    private void addItemToFrame(Player player, ItemFrame itemFrame, ItemStack item) {
+        List<ItemStack> items = frameMap.get(itemFrame);
+        if (items == null) {
+            items = new ArrayList<>();
+            frameMap.addAll(itemFrame, items); // Initialize with an empty list
+        }
         if (items.size() < MAX_ITEMS) {
             items.add(item.clone());
-            player.info("&7Added item '&e%s&7' to the frame's rotation.", item.getI18NDisplayName());
+            ChatUitls.info("&7Added item '&e%s&7' to the frame's rotation.", player, item.getI18NDisplayName());
         } else {
-            player.info("&cYou can't add more than %d items to the frame.", MAX_ITEMS);
+            ChatUitls.info("&cYou can't add more than %d items to the frame.", player, MAX_ITEMS);
         }
     }
 
@@ -240,8 +254,8 @@ public class FrameListener implements Listener {
      */
     private Map<ItemStack, Double> collectStorageItems(Container container) {
         Map<ItemStack, Double> storageItems = new HashMap<>();
-        for (ItemStack item : container.getInventory().getContents()) {
-            if (item != null) {
+        for (ItemStack item: container.getInventory().getContents()) {
+            if (item!= null) {
                 storageItems.merge(item, (double) item.getAmount(), Double::sum);
             }
         }
@@ -255,8 +269,9 @@ public class FrameListener implements Listener {
      * @param storageBlock The storage block involved.
      * @param player The player performing the action.
      */
-    private void handleStorageInteraction(ItemFrame itemFrame, Block storageBlock, RPlayer player) {
+    private void handleStorageInteraction(ItemFrame itemFrame, Block storageBlock, Player player) {
         Container container = (Container) storageBlock.getState();
+        frameMap.addContainer(itemFrame, container);
         Map<ItemStack, Double> storageItems = collectStorageItems(container);
 
         List<ItemStack> items = storageItems.entrySet().stream().map(entry -> {
@@ -267,8 +282,8 @@ public class FrameListener implements Listener {
             return item;
         }).toList();
 
-        initializeFrameIfAbsent(itemFrame, items);
-        player.info("&7Detected any storage behind it! &bRotating counting the items in it.");
+        frameMap.addAll(itemFrame, items);
+        ChatUitls.info("&7Detected a storage behind it! &bRotating counting the items in it.", player);
     }
 
     /**

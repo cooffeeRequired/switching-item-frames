@@ -1,8 +1,9 @@
 package cz.coffee;
 
+import cz.coffee.commands.ItemFrameCommand;
 import cz.coffee.listeners.AnvilListener;
 import cz.coffee.listeners.FrameListener;
-import cz.coffee.utils.ChatUitls;
+import cz.coffee.support.ChatUitls;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -12,8 +13,10 @@ import org.bukkit.scheduler.BukkitRunnable;
  */
 public final class ItemFrameRotator extends JavaPlugin {
 
-    private FrameListener frameListener;
     private static ItemFrameRotator plugin;
+    private static final String PLUGIN_NAME = "ItemFrameRotator";
+    public static boolean ROTATE_ITEMS = false;
+    private final FrameListener frameListener = new FrameListener();
 
     public static ItemFrameRotator getInstance() {
         return plugin;
@@ -22,16 +25,15 @@ public final class ItemFrameRotator extends JavaPlugin {
     @Override
     public void onEnable() {
         plugin = this;
-        frameListener = new FrameListener();
         registerListeners();
         startItemRotationTask();
         CustomItemFrame.registerRecipe(this);
+        this.getCommand("itemframerotator").setExecutor(new ItemFrameCommand());
         logToConsole("Plugin enabled.");
     }
 
     @Override
     public void onDisable() {
-        frameListener.clearData();
         logToConsole("Plugin disabled.");
     }
 
@@ -42,7 +44,7 @@ public final class ItemFrameRotator extends JavaPlugin {
         var pluginManager = Bukkit.getPluginManager();
         pluginManager.registerEvents(frameListener, this);
         pluginManager.registerEvents(new AnvilListener(), this);
-         pluginManager.registerEvents(new CustomItemFrame.CreativeInventoryListener(), this);
+        pluginManager.registerEvents(new CustomItemFrame.CreativeInventoryListener(), this);
     }
 
     /**
@@ -52,9 +54,9 @@ public final class ItemFrameRotator extends JavaPlugin {
         new BukkitRunnable() {
             @Override
             public void run() {
-                frameListener.rotateItems();
+                if (ROTATE_ITEMS) frameListener.rotateItems();
             }
-        }.runTaskTimer(this, 0, 50);
+        }.runTaskTimer(this, 0, 20);
     }
 
     /**

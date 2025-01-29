@@ -4,7 +4,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 
-import static cz.coffee.utils.ChatUitls.translate;
+import static cz.coffee.support.ChatUitls.translate;
 
 /**
  * Listener class for interactions with anvils.
