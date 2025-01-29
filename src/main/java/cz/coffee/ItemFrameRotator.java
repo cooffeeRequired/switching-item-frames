@@ -1,10 +1,8 @@
 package cz.coffee;
 
 import cz.coffee.listeners.AnvilListener;
-import cz.coffee.listeners.StorageListener;
 import cz.coffee.listeners.FrameListener;
 import cz.coffee.utils.ChatUitls;
-import org.apache.maven.artifact.repository.metadata.Plugin;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
