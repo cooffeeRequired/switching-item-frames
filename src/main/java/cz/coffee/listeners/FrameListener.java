@@ -78,6 +78,7 @@ public class FrameListener implements Listener {
                             if (placedEntity instanceof ItemFrame itemFrame) {
                                 var attachedBlock = event.getClickedBlock();
                                 if (isAllowedStorage(attachedBlock)) {
+                                    rPlayer.info("&7Special &bRotated Item Frame&7 placed!");
                                     itemFrame.getPersistentDataContainer().set(ITEM_KEY, PersistentDataType.STRING, "special_frame");
                                     handleStorageInteraction(itemFrame, attachedBlock, rPlayer);
                                 } else {
@@ -267,7 +268,7 @@ public class FrameListener implements Listener {
         }).toList();
 
         initializeFrameIfAbsent(itemFrame, items);
-        player.info("&bStorage contents loaded into the item frame rotation.");
+        player.info("&7Detected any storage behind it! &bRotating counting the items in it.");
     }
 
     /**
